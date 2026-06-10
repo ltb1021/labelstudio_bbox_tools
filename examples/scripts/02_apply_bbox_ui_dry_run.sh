@@ -1,9 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# 사용 전 예시:
+#   export MMYOLO_JSON="/path/to/annotations_mmyolo.json"
+#   ./examples/scripts/02_apply_bbox_ui_dry_run.sh
+
+MMYOLO_JSON="${MMYOLO_JSON:?set MMYOLO_JSON to a COCO/MMYOLO json file}"
+PROJECT_ID="${PROJECT_ID:-0}"
+
 lsbbox-apply-ui \
-  --project-id 0 \
-  --mmyolo-json "/share_ssd/ltb/Users/ltb/label_studio/박스_데이터셋_250507/박스_mmyolo/260609_형주책임님_small데이터셋_1차테스트용_export/annotations_mmyolo.json" \
+  --project-id "$PROJECT_ID" \
+  --mmyolo-json "$MMYOLO_JSON" \
   --shape bbox \
   --dry-run
-

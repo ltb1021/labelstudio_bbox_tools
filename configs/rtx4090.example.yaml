@@ -1,12 +1,12 @@
-# Example values for the current RTX4090 server.
-# This file is documentation-oriented; real tokens belong in local .env.
+# RTX4090 server example template.
+# 실제 dataset/export 경로는 사용자 작업에 맞게 로컬에서 채운다.
+# token은 YAML에 저장하지 말고 .env에 둔다.
 
 label_studio:
-  url: "http://115.145.202.51:9225"
-  doc_root: "/share_ssd/ltb/Users/ltb/label_studio"
+  url: "http://YOUR_RTX4090_SERVER_IP:9225"
+  doc_root: "/path/to/label_studio_data"
 
 smoke_test:
-  sample_image_dir: "/share_ssd/ltb/Users/ltb/label_studio/운영서버_도메인맞춤_추가학습용/260608/오탐/쓰러짐/images"
-  sample_mmyolo_json: "/share_ssd/ltb/Users/ltb/label_studio/박스_데이터셋_250507/박스_mmyolo/260609_형주책임님_small데이터셋_1차테스트용_export/annotations_mmyolo.json"
-  temp_output_dir: "/share_ssd/ltb/Users/ltb/label_studio/260610_labelstudio_export_refactoring_test"
-
+  sample_image_dir: "/path/to/sample/images"
+  sample_mmyolo_json: "/path/to/annotations_mmyolo.json"
+  temp_output_dir: "/path/to/temp/export/output"

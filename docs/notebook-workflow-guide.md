@@ -1,0 +1,60 @@
+# Notebook Workflow Guide
+
+이 repo는 notebook을 수동 확인과 반복 작업의 기본 진입점으로 둔다. shell script는 같은 작업을 빠르게 반복하거나 자동화할 때 사용한다.
+
+## Notebook 위치
+
+Label Studio 관련 notebook은 아래 폴더에 둔다.
+
+```text
+examples/notebooks/labelstudio/
+```
+
+현재 notebook은 다음 4개다.
+
+```text
+00_ls_check_environment.ipynb
+01_ls_import_images.ipynb
+02_ls_apply_bbox_ui_from_mmyolo.ipynb
+03_ls_export_mmyolo.ipynb
+```
+
+파일명에 `ls_`를 붙인 이유는 나중에 Label Studio와 직접 관련 없는 dataset 전처리, YOLO 변환, pseudo labeling notebook이 추가되어도 쉽게 구분하기 위해서다.
+
+## 권장 실행 순서
+
+1. `00_ls_check_environment.ipynb`
+2. `01_ls_import_images.ipynb`
+3. `02_ls_apply_bbox_ui_from_mmyolo.ipynb`
+4. Label Studio 브라우저에서 bbox labeling
+5. `03_ls_export_mmyolo.ipynb`
+
+## 안전 기본값
+
+각 notebook은 처음 열었을 때 실제 서버 데이터를 바로 바꾸지 않도록 구성한다.
+
+- import notebook: `DRY_RUN=True`
+- UI 설정 notebook: `PREVIEW_ONLY=True`
+- export notebook: `RUN_EXPORT=False`
+
+이 값을 바꾸기 전에는 출력 메시지를 보고 경로, project id, class 목록이 맞는지 확인한다.
+
+## `.env` 사용 방식
+
+notebook에는 API key를 직접 적지 않는다. 대신 repo root의 `.env` 파일에서 읽는다.
+
+```text
+LABEL_STUDIO_URL=http://your-server-ip:9225
+LABEL_STUDIO_API_KEY=your-local-token
+LABEL_STUDIO_DOC_ROOT=/path/to/label_studio_data
+```
+
+`.env`는 `.gitignore`에 포함되어 있으므로 Git에 올라가지 않는다. `.env.example`은 어떤 값을 채워야 하는지 보여주는 템플릿이다.
+
+## notebook과 shell script의 역할 차이
+
+notebook은 사람이 눈으로 확인하면서 단계별로 실행하기 좋다. class 목록, 생성될 local-files URL, export 통계 같은 중간 결과를 확인하기 쉽다.
+
+shell script는 이미 검증된 설정을 반복 실행하기 좋다. 예를 들어 매일 같은 폴더 구조로 export하는 작업은 script가 더 편할 수 있다.
+
+이 repo에서는 notebook을 먼저 검증하고, 반복되는 작업만 script로 옮기는 방식을 기본 정책으로 둔다.
