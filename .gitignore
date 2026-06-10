@@ -1,0 +1,27 @@
+.env
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# Local data and generated outputs
+data/
+outputs/
+exports/
+*.sqlite3
+
+# Large/non-source artifacts
+*.pt
+*.pth
+*.onnx
+*.engine
+*.ckpt
+*.safetensors
+*.mp4
+*.avi
+*.mov
+*.mkv
+

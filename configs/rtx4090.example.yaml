@@ -1,0 +1,12 @@
+# Example values for the current RTX4090 server.
+# This file is documentation-oriented; real tokens belong in local .env.
+
+label_studio:
+  url: "http://115.145.202.51:9225"
+  doc_root: "/share_ssd/ltb/Users/ltb/label_studio"
+
+smoke_test:
+  sample_image_dir: "/share_ssd/ltb/Users/ltb/label_studio/운영서버_도메인맞춤_추가학습용/260608/오탐/쓰러짐/images"
+  sample_mmyolo_json: "/share_ssd/ltb/Users/ltb/label_studio/박스_데이터셋_250507/박스_mmyolo/260609_형주책임님_small데이터셋_1차테스트용_export/annotations_mmyolo.json"
+  temp_output_dir: "/share_ssd/ltb/Users/ltb/label_studio/260610_labelstudio_export_refactoring_test"
+

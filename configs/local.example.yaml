@@ -1,0 +1,12 @@
+# Generic Ubuntu server example.
+# Mount the dataset path into the Label Studio container and set doc_root to
+# the same local-files root that Label Studio can serve.
+
+label_studio:
+  url: "http://YOUR_SERVER_IP:9225"
+  doc_root: "/path/on/host/label_studio"
+
+paths:
+  dataset_root: "/path/on/host/datasets"
+  export_root: "/path/on/host/label_studio/exports"
+
