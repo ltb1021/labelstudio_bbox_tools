@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "labelstudio-bbox-tools"
 version = "0.1.0"
-description = "Utilities for Label Studio bbox image import, label config setup, and dataset export."
+description = "Utilities for Label Studio bbox image import, pseudo labeling, annotation merge, and dataset export."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -17,11 +17,16 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=7"]
+pseudo = ["ultralytics>=8", "PyYAML>=6"]
 
 [project.scripts]
 lsbbox-import-images = "labelstudio_bbox_tools.importers.image_import:main"
 lsbbox-apply-ui = "labelstudio_bbox_tools.ui.label_config:main"
 lsbbox-export = "labelstudio_bbox_tools.exporters.project_export:main"
+lsbbox-pseudo-label-yolo = "labelstudio_bbox_tools.pseudo_label.yolo:main"
+lsbbox-merge-ann-pred = "labelstudio_bbox_tools.merge.ann_pred:main"
+lsbbox-import-annotations = "labelstudio_bbox_tools.importers.annotation_import:main"
+lsbbox-delete-project-safe = "labelstudio_bbox_tools.admin.project_delete:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

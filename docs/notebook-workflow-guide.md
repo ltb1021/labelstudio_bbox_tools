@@ -10,13 +10,17 @@ Label Studio 관련 notebook은 아래 폴더에 둔다.
 examples/notebooks/labelstudio/
 ```
 
-현재 notebook은 다음 4개다.
+현재 Label Studio notebook은 다음과 같다.
 
 ```text
 00_ls_check_environment.ipynb
 01_ls_import_images.ipynb
 02_ls_apply_bbox_ui_from_mmyolo.ipynb
 03_ls_export_mmyolo.ipynb
+04_ls_pseudo_label_yolo.ipynb
+05_ls_merge_ann_pred.ipynb
+06_ls_import_annotations_mmyolo.ipynb
+99_ls_delete_project_safe.ipynb
 ```
 
 파일명에 `ls_`를 붙인 이유는 나중에 Label Studio와 직접 관련 없는 dataset 전처리, YOLO 변환, pseudo labeling notebook이 추가되어도 쉽게 구분하기 위해서다.
@@ -27,7 +31,11 @@ examples/notebooks/labelstudio/
 2. `01_ls_import_images.ipynb`
 3. `02_ls_apply_bbox_ui_from_mmyolo.ipynb`
 4. Label Studio 브라우저에서 bbox labeling
-5. `03_ls_export_mmyolo.ipynb`
+5. `03_ls_export_mmyolo.ipynb
+04_ls_pseudo_label_yolo.ipynb
+05_ls_merge_ann_pred.ipynb
+06_ls_import_annotations_mmyolo.ipynb
+99_ls_delete_project_safe.ipynb`
 
 ## 안전 기본값
 
@@ -36,6 +44,7 @@ examples/notebooks/labelstudio/
 - import notebook: `DRY_RUN=True`
 - UI 설정 notebook: `PREVIEW_ONLY=True`
 - export notebook: `RUN_EXPORT=False`
+- pseudo/merge/import/delete notebook: `DRY_RUN=True` 또는 별도 실행 flag가 꺼진 상태
 
 이 값을 바꾸기 전에는 출력 메시지를 보고 경로, project id, class 목록이 맞는지 확인한다.
 
