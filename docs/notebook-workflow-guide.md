@@ -20,6 +20,7 @@ examples/notebooks/labelstudio/
 04_ls_pseudo_label_yolo.ipynb
 05_ls_merge_ann_pred.ipynb
 06_ls_import_annotations_mmyolo.ipynb
+07_ls_extract_video_frames.ipynb
 99_ls_delete_project_safe.ipynb
 ```
 
@@ -28,14 +29,15 @@ examples/notebooks/labelstudio/
 ## 권장 실행 순서
 
 1. `00_ls_check_environment.ipynb`
-2. `01_ls_import_images.ipynb`
-3. `02_ls_apply_bbox_ui_from_mmyolo.ipynb`
-4. Label Studio 브라우저에서 bbox labeling
-5. `03_ls_export_mmyolo.ipynb
-04_ls_pseudo_label_yolo.ipynb
-05_ls_merge_ann_pred.ipynb
-06_ls_import_annotations_mmyolo.ipynb
-99_ls_delete_project_safe.ipynb`
+2. 영상이 입력이면 `07_ls_extract_video_frames.ipynb`로 라벨링용 image frame 생성
+3. `01_ls_import_images.ipynb`
+4. `02_ls_apply_bbox_ui_from_mmyolo.ipynb`
+5. Label Studio 브라우저에서 bbox labeling
+6. `03_ls_export_mmyolo.ipynb`
+7. 필요하면 `04_ls_pseudo_label_yolo.ipynb`
+8. 필요하면 `05_ls_merge_ann_pred.ipynb`
+9. 필요하면 `06_ls_import_annotations_mmyolo.ipynb`
+10. 위험 작업이 필요할 때만 `99_ls_delete_project_safe.ipynb`
 
 ## 안전 기본값
 
@@ -44,7 +46,7 @@ examples/notebooks/labelstudio/
 - import notebook: `DRY_RUN=True`
 - UI 설정 notebook: `PREVIEW_ONLY=True`
 - export notebook: `RUN_EXPORT=False`
-- pseudo/merge/import/delete notebook: `DRY_RUN=True` 또는 별도 실행 flag가 꺼진 상태
+- video/pseudo/merge/import/delete notebook: `DRY_RUN=True` 또는 별도 실행 flag가 꺼진 상태
 
 이 값을 바꾸기 전에는 출력 메시지를 보고 경로, project id, class 목록이 맞는지 확인한다.
 
