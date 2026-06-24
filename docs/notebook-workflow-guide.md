@@ -18,6 +18,7 @@ examples/notebooks/labelstudio/
 02_ls_apply_bbox_ui_from_mmyolo.ipynb
 03_ls_export_mmyolo.ipynb
 04_ls_pseudo_label_yolo.ipynb
+04_2_ls_pseudo_label_rfdetr.ipynb
 05_ls_merge_ann_pred.ipynb
 06_ls_import_annotations_mmyolo.ipynb
 07_ls_extract_video_frames.ipynb
@@ -35,9 +36,10 @@ examples/notebooks/labelstudio/
 5. Label Studio 브라우저에서 bbox labeling
 6. `03_ls_export_mmyolo.ipynb`
 7. 필요하면 `04_ls_pseudo_label_yolo.ipynb`
-8. 필요하면 `05_ls_merge_ann_pred.ipynb`
-9. 필요하면 `06_ls_import_annotations_mmyolo.ipynb`
-10. 위험 작업이 필요할 때만 `99_ls_delete_project_safe.ipynb`
+8. 필요하면 `04_2_ls_pseudo_label_rfdetr.ipynb`
+9. 필요하면 `05_ls_merge_ann_pred.ipynb`
+10. 필요하면 `06_ls_import_annotations_mmyolo.ipynb`
+11. 위험 작업이 필요할 때만 `99_ls_delete_project_safe.ipynb`
 
 ## 안전 기본값
 

@@ -27,6 +27,23 @@ notebook: `examples/notebooks/labelstudio/04_ls_pseudo_label_yolo.ipynb`
 
 `CLASS_IOU`는 모델이 한 번 NMS를 한 뒤에도 같은 class 안에서 겹치는 bbox가 많이 남을 때 추가로 정리하기 위한 값이다. 예를 들어 `small_worker`와 `worker`처럼 비슷한 class가 혼동되는 문제는 `CLASS_THRESH`와 class 설계, merge 단계의 `CLASS_GROUPS`까지 함께 조정해야 한다.
 
+## RF-DETR Pseudo Labeling
+
+notebook: `examples/notebooks/labelstudio/04_2_ls_pseudo_label_rfdetr.ipynb`
+
+이 기능은 기존 image task에 RF-DETR custom checkpoint 추론 결과를 `prediction`으로 추가한다. 기본 UX는 YOLO pseudo labeling notebook과 최대한 맞춘다.
+
+주요 설정:
+
+- `MODEL_WEIGHTS`: RF-DETR checkpoint 경로. 보통 `checkpoint_best_total.pth`를 직접 지정한다.
+- `MODEL_VARIANT`: `auto`, `nano`, `small`, `medium`, `large` 중 선택한다. checkpoint에 model metadata가 있으면 `auto`가 편할 수 있다.
+- `CLASS_YAML`: 학습 때 사용한 class order와 같은 `names`를 가진 yaml이어야 한다.
+- `CONF`: RF-DETR `predict(..., threshold=...)`에 전달되는 기본 confidence threshold다.
+- `CLASS_THRESH`: class별 threshold. 낮은 class별 threshold를 쓰려면 `CONF`도 충분히 낮게 잡아야 한다.
+- `IOU`, `CLASS_IOU`: RF-DETR 결과에 한 번 더 적용하는 classwise NMS 설정이다. RF-DETR 자체 후처리와 중복될 수 있으므로 중복 bbox가 많을 때만 조정한다.
+
+기본값은 `DRY_RUN=True`이므로 model load, inference, upload를 하지 않는다. 실제 업로드는 notebook에서 `DRY_RUN=False`로 바꾼 뒤 실행한다.
+
 ## Annotation/Prediction Merge
 
 notebook: `examples/notebooks/labelstudio/05_ls_merge_ann_pred.ipynb`
