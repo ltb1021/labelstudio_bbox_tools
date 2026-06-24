@@ -138,6 +138,21 @@ lsbbox-export \
   --ann-min-lead 0
 ```
 
+기본적으로 선택한 `ANN_USER_ID`의 bbox가 없는 task는 MMYOLO `images[]`에서도 제외된다.
+검수용 negative image처럼 bbox가 없는 image까지 의도적으로 남겨야 하면 `--include-empty-images`를 추가한다.
+
+```bash
+lsbbox-export \
+  --project-id 123 \
+  --out-dir "/path/to/export/output" \
+  --export-type ann \
+  --ann-format mmyolo \
+  --source-type ann \
+  --ann-user-id 1 \
+  --ann-min-lead 0 \
+  --include-empty-images
+```
+
 YOLO pseudo labeling dry-run 예시:
 
 ```bash

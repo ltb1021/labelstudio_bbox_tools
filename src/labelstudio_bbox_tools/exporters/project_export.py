@@ -25,6 +25,9 @@ class ExportResult:
     task_count: int
     image_count: int
     annotation_count: int
+    source_matched_count: int = 0
+    skipped_no_source_count: int = 0
+    skipped_empty_result_count: int = 0
 
 
 def _round6(value: float) -> float:
@@ -129,6 +132,18 @@ def _mmyolo_file_name(src: Path, doc_root: Path, mode: str) -> str:
     raise ValueError("mmyolo_file_name must be 'absolute' or 'doc-root-relative'")
 
 
+def _rectangle_results(results: list[dict], class_to_id: dict[str, int]) -> list[dict]:
+    selected = []
+    for result in results:
+        if result.get("type") != "rectanglelabels":
+            continue
+        labels = result.get("value", {}).get("rectanglelabels") or []
+        if not labels or labels[0] not in class_to_id:
+            continue
+        selected.append(result)
+    return selected
+
+
 def export_project(
     *,
     project_id: int,
@@ -147,6 +162,7 @@ def export_project(
     only_finished: bool = True,
     write_images_list: bool = True,
     mmyolo_file_name: str = "absolute",
+    include_empty_images: bool = False,
 ) -> ExportResult:
     if export_type not in {"img", "ann", "both"}:
         raise ValueError("export_type must be one of: img, ann, both")
@@ -187,6 +203,9 @@ def export_project(
         }
 
     exported_images = []
+    source_matched_count = 0
+    skipped_no_source_count = 0
+    skipped_empty_result_count = 0
 
     for task in tqdm(tasks, desc="Exporting"):
         src = resolve_local_file_url(task["data"]["image"], doc_root_path)
@@ -198,7 +217,17 @@ def export_project(
         else:
             candidate = _select_prediction(task, str(pred_model_ver))
 
-        results = candidate["result"] if candidate else []
+        results = (candidate.get("result") or []) if candidate else []
+        rectangle_results = _rectangle_results(results, class_to_id)
+        if candidate:
+            source_matched_count += 1
+
+        if not include_empty_images and not rectangle_results:
+            if candidate is None:
+                skipped_no_source_count += 1
+            else:
+                skipped_empty_result_count += 1
+            continue
 
         if export_type in {"img", "both"}:
             dst = _make_path(image_root, rel_for_copy)
@@ -209,7 +238,7 @@ def export_project(
 
         if export_type in {"ann", "both"}:
             if ann_format == "mmyolo":
-                width, height = _image_size(task, src, results[0] if results else None)
+                width, height = _image_size(task, src, rectangle_results[0] if rectangle_results else None)
                 if not width or not height:
                     continue
                 assert coco is not None
@@ -221,12 +250,8 @@ def export_project(
                         "height": height,
                     }
                 )
-                for result in results:
-                    if result.get("type") != "rectanglelabels":
-                        continue
+                for result in rectangle_results:
                     class_name = result["value"]["rectanglelabels"][0]
-                    if class_name not in class_to_id:
-                        continue
                     x_px = result["value"]["x"] * width / 100
                     y_px = result["value"]["y"] * height / 100
                     box_w = result["value"]["width"] * width / 100
@@ -243,16 +268,14 @@ def export_project(
                     )
                     ann_id += 1
             else:
-                if not results:
+                if not rectangle_results and not include_empty_images:
                     continue
-                width, height = _image_size(task, src, results[0])
+                width, height = _image_size(task, src, rectangle_results[0] if rectangle_results else None)
                 if not width or not height:
                     continue
                 header = YOLO_HEADER if ann_format == "yolo" else YOLO_OBB_HEADER
                 lines = [header]
-                for result in results:
-                    if result.get("type") != "rectanglelabels":
-                        continue
+                for result in rectangle_results:
                     class_id = class_to_id[result["value"]["rectanglelabels"][0]]
                     x = result["value"]["x"] / 100
                     y = result["value"]["y"] / 100
@@ -281,9 +304,22 @@ def export_project(
         existing = sorted({path.relative_to(out_path) for path in exported_images if path.exists()})
         (out_path / "images_all.txt").write_text("\n".join(map(str, existing)), encoding="utf-8")
 
+    print(
+        "[info] source_matched="
+        f"{source_matched_count:,}, skipped_no_source={skipped_no_source_count:,}, "
+        f"skipped_empty_result={skipped_empty_result_count:,}"
+    )
     print(f"[ok] export complete: {out_path}")
     image_count = len(coco["images"]) if coco else len({path for path in exported_images if path.exists()})
-    return ExportResult(out_path, len(tasks), image_count, annotation_count)
+    return ExportResult(
+        out_path,
+        len(tasks),
+        image_count,
+        annotation_count,
+        source_matched_count,
+        skipped_no_source_count,
+        skipped_empty_result_count,
+    )
 
 
 def main() -> None:
@@ -298,6 +334,7 @@ def main() -> None:
     parser.add_argument("--reject-lead-time-none", action="store_true")
     parser.add_argument("--pred-model-ver")
     parser.add_argument("--include-unfinished", action="store_true")
+    parser.add_argument("--include-empty-images", action="store_true")
     parser.add_argument("--mmyolo-file-name", default="absolute", choices=["absolute", "doc-root-relative"])
     parser.add_argument("--dotenv", default=".env")
     args = parser.parse_args()
@@ -318,6 +355,7 @@ def main() -> None:
         pred_model_ver=args.pred_model_ver,
         only_finished=not args.include_unfinished,
         mmyolo_file_name=args.mmyolo_file_name,
+        include_empty_images=args.include_empty_images,
     )
 
 
