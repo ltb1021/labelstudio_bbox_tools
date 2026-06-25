@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+import json
+from collections import Counter
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import Sequence
+from typing import Any, Sequence
 
 from labelstudio_bbox_tools.pose_inference.common import PoseInstance, PoseKeypoint
 from labelstudio_bbox_tools.pseudo_label.yolo import classwise_nms_indices
-from labelstudio_bbox_tools.video_inference.common import Detection
+from labelstudio_bbox_tools.video_inference.common import Detection, import_cv2, safe_name
 
 
 @dataclass(frozen=True)
@@ -35,11 +37,174 @@ class PoseDetectionCases:
         return len(self.matched)
 
 
+FALLBACK_SUCCESS_SOURCE = "fallback_crop_pose"
+FALLBACK_FAILED_SOURCE = "fallback_failed_detection"
+FALLBACK_DEBUG_SUCCESS = "fallback_success"
+FALLBACK_DEBUG_FAILED = "fallback_failed"
+
+
 @dataclass
 class CropRegion:
     detection: Detection
     crop_xyxy: tuple[int, int, int, int]
     crop_bgr: object
+
+
+@dataclass
+class FallbackDebugCropRecord:
+    case: str
+    video_path: str
+    frame_index: int
+    crop_index: int
+    detection: Detection
+    crop_xyxy: tuple[int, int, int, int]
+    crop_bgr: object
+
+
+class FallbackDebugSaver:
+    def __init__(
+        self,
+        *,
+        save_frames: bool = False,
+        save_crops: bool = False,
+        max_items_per_case_per_video: int | None = 200,
+        jpeg_quality: int = 95,
+    ) -> None:
+        self.save_frames = bool(save_frames)
+        self.save_crops = bool(save_crops)
+        self.max_items_per_case_per_video = max_items_per_case_per_video
+        self.jpeg_quality = max(1, min(100, int(jpeg_quality)))
+        self.pending_crops: dict[tuple[str, int], list[FallbackDebugCropRecord]] = {}
+        self.frame_counts: Counter[tuple[str, str]] = Counter()
+        self.crop_counts: Counter[tuple[str, str]] = Counter()
+        self.records: list[dict[str, Any]] = []
+
+    @property
+    def enabled(self) -> bool:
+        return self.save_frames or self.save_crops
+
+    def add_crop(
+        self,
+        *,
+        case: str,
+        video_path: Path | None,
+        frame_index: int,
+        crop_index: int,
+        crop: CropRegion,
+    ) -> None:
+        if not self.save_crops:
+            return
+        key = (str(video_path) if video_path else "<unknown>", int(frame_index))
+        self.pending_crops.setdefault(key, []).append(
+            FallbackDebugCropRecord(
+                case=case,
+                video_path=key[0],
+                frame_index=int(frame_index),
+                crop_index=int(crop_index),
+                detection=crop.detection,
+                crop_xyxy=crop.crop_xyxy,
+                crop_bgr=crop.crop_bgr,
+            )
+        )
+
+    def _can_save(self, counter: Counter[tuple[str, str]], video_key: str, case: str) -> bool:
+        if self.max_items_per_case_per_video is None:
+            return True
+        return counter[(video_key, case)] < int(self.max_items_per_case_per_video)
+
+    def _write_image(self, path: Path, image_bgr) -> bool:
+        cv2 = import_cv2()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        params = [int(cv2.IMWRITE_JPEG_QUALITY), self.jpeg_quality]
+        return bool(cv2.imwrite(str(path), image_bgr, params))
+
+    def after_frame(
+        self,
+        *,
+        frame_bgr,
+        drawn_bgr,
+        instances: Sequence[PoseInstance],
+        video_path: Path,
+        video_rel_path: Path,
+        output_video_path: Path,
+        frame_index: int,
+        timestamp_seconds: float,
+        run_dir: Path,
+    ) -> None:
+        video_key = safe_name(str(Path(video_rel_path).with_suffix("")))
+        sources = {instance.source for instance in instances}
+        frame_cases: list[str] = []
+        if FALLBACK_SUCCESS_SOURCE in sources:
+            frame_cases.append(FALLBACK_DEBUG_SUCCESS)
+        if FALLBACK_FAILED_SOURCE in sources:
+            frame_cases.append(FALLBACK_DEBUG_FAILED)
+
+        if self.save_frames:
+            for case in frame_cases:
+                if not self._can_save(self.frame_counts, video_key, case):
+                    continue
+                out_path = run_dir / "debug_frames" / case / f"{video_key}__f{int(frame_index):06d}.jpg"
+                if self._write_image(out_path, drawn_bgr):
+                    self.frame_counts[(video_key, case)] += 1
+                    self.records.append(
+                        {
+                            "kind": "frame",
+                            "case": case,
+                            "video_path": str(video_path),
+                            "video_rel_path": str(video_rel_path),
+                            "output_video_path": str(output_video_path),
+                            "frame_index": int(frame_index),
+                            "timestamp_seconds": float(timestamp_seconds),
+                            "path": str(out_path),
+                        }
+                    )
+
+        pending_key = (str(video_path) if video_path else "<unknown>", int(frame_index))
+        pending = self.pending_crops.pop(pending_key, [])
+        if self.save_crops:
+            for record in pending:
+                case = record.case
+                if not self._can_save(self.crop_counts, video_key, case):
+                    continue
+                det_name = safe_name(record.detection.class_name)
+                out_path = (
+                    run_dir
+                    / "debug_crops"
+                    / case
+                    / f"{video_key}__f{int(frame_index):06d}__crop{record.crop_index:02d}__{det_name}.jpg"
+                )
+                if self._write_image(out_path, record.crop_bgr):
+                    self.crop_counts[(video_key, case)] += 1
+                    self.records.append(
+                        {
+                            "kind": "crop",
+                            "case": case,
+                            "video_path": str(video_path),
+                            "video_rel_path": str(video_rel_path),
+                            "frame_index": int(frame_index),
+                            "timestamp_seconds": float(timestamp_seconds),
+                            "crop_index": int(record.crop_index),
+                            "crop_xyxy": [int(value) for value in record.crop_xyxy],
+                            "detection": record.detection.as_dict(),
+                            "path": str(out_path),
+                        }
+                    )
+
+    def write_summary(self, run_dir: Path) -> Path | None:
+        if not self.enabled:
+            return None
+        path = run_dir / "fallback_debug_summary.json"
+        payload = {
+            "save_frames": self.save_frames,
+            "save_crops": self.save_crops,
+            "max_items_per_case_per_video": self.max_items_per_case_per_video,
+            "jpeg_quality": self.jpeg_quality,
+            "frame_counts": {f"{video}::{case}": count for (video, case), count in self.frame_counts.items()},
+            "crop_counts": {f"{video}::{case}": count for (video, case), count in self.crop_counts.items()},
+            "records": self.records,
+        }
+        path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        return path
 
 
 def box_iou(a: Sequence[float], b: Sequence[float]) -> float:
@@ -148,6 +313,26 @@ def make_crop_regions(
         x1, y1, x2, y2 = crop_xyxy
         crops.append(CropRegion(detection=detection, crop_xyxy=crop_xyxy, crop_bgr=frame_bgr[y1:y2, x1:x2].copy()))
     return crops
+
+
+def detection_to_pose_instance(
+    detection: Detection,
+    *,
+    source: str = FALLBACK_FAILED_SOURCE,
+    class_name: str | None = None,
+) -> PoseInstance:
+    return PoseInstance(
+        xyxy=tuple(float(value) for value in detection.xyxy),
+        class_id=int(detection.class_id),
+        class_name=class_name or detection.class_name,
+        score=float(detection.score),
+        raw_score=float(detection.score),
+        keypoints=tuple(),
+        source=source,
+        detection_class_name=detection.class_name,
+        detection_score=float(detection.score),
+        detection_xyxy=tuple(float(value) for value in detection.xyxy),
+    )
 
 
 def attach_detection_context(

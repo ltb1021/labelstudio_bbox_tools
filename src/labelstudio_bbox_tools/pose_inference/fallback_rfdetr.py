@@ -7,8 +7,13 @@ from typing import Sequence
 
 from labelstudio_bbox_tools.pose_inference.common import PoseInstance, load_pose_class_names, preview_pose_video_inputs, run_pose_video_inference
 from labelstudio_bbox_tools.pose_inference.fallback_crop import (
+    FALLBACK_DEBUG_FAILED,
+    FALLBACK_DEBUG_SUCCESS,
+    FALLBACK_SUCCESS_SOURCE,
+    FallbackDebugSaver,
     apply_pose_nms,
     attach_detection_context,
+    detection_to_pose_instance,
     filter_detections_by_class,
     make_crop_regions,
     offset_pose_from_crop,
@@ -27,7 +32,7 @@ from labelstudio_bbox_tools.video_inference.common import Detection
 
 def _chunked(items: Sequence, batch_size: int):
     for start in range(0, len(items), batch_size):
-        yield items[start : start + batch_size]
+        yield start, items[start : start + batch_size]
 
 
 def _candidate_to_detections(
@@ -100,6 +105,15 @@ def run_rfdetr_pose_fallback_crop_test(
     draw_bbox: bool = True,
     draw_skeleton: bool = True,
     draw_keypoints: bool = True,
+    color_by_source: bool = True,
+    source_color_map: dict[str, tuple[int, int, int]] | None = None,
+    source_label_prefixes: dict[str, str] | None = None,
+    draw_detection_only_bbox: bool = True,
+    draw_fallback_success_dashed: bool = True,
+    save_debug_frames: bool = False,
+    save_debug_crops: bool = False,
+    max_debug_items_per_case_per_video: int | None = 200,
+    debug_jpeg_quality: int = 95,
     codec: str = "mp4v",
     overwrite: bool = False,
     dry_run: bool = True,
@@ -127,7 +141,8 @@ def run_rfdetr_pose_fallback_crop_test(
     if dry_run:
         print(
             f"[dry-run] model={model_name}, detector_weights={detector_weights}, pose_weights={pose_weights or '<official-default>'}, "
-            f"target_detection_classes={list(target_detection_classes or []) or '<all>'}"
+            f"target_detection_classes={list(target_detection_classes or []) or '<all>'}, "
+            f"draw_detection_only_bbox={draw_detection_only_bbox}, save_debug_frames={save_debug_frames}"
         )
         return preview_pose_video_inputs(
             input_path=input_path,
@@ -153,6 +168,12 @@ def run_rfdetr_pose_fallback_crop_test(
     print(f"[info] loaded pose={pose_load_info.model_class}/{pose_load_info.load_mode}")
 
     stats: Counter[str] = Counter()
+    debug_saver = FallbackDebugSaver(
+        save_frames=save_debug_frames,
+        save_crops=save_debug_crops,
+        max_items_per_case_per_video=max_debug_items_per_case_per_video,
+        jpeg_quality=debug_jpeg_quality,
+    )
 
     def detector_predict(frame_rgb) -> list[Detection]:
         raw = detector_model.predict(frame_rgb, threshold=detector_conf, include_source_image=False)
@@ -184,11 +205,12 @@ def run_rfdetr_pose_fallback_crop_test(
         instances = _keypoints_to_pose_instances(raw, pose_class_names)
         return _filter_pose_instances(instances, pose_class_names, enable_nms=True, iou=pose_iou, keypoint_conf=keypoint_conf)
 
-    def pose_predict_crops(crops) -> list[PoseInstance]:
+    def pose_predict_crops(crops, frame_index: int, video_path: Path | None) -> tuple[list[PoseInstance], set[int]]:
         if not crops:
-            return []
+            return [], set()
         restored: list[PoseInstance] = []
-        for crop_batch in _chunked(crops, fallback_batch_size):
+        successful_crop_indices: set[int] = set()
+        for batch_start, crop_batch in _chunked(crops, fallback_batch_size):
             crop_rgbs = [cv2.cvtColor(crop.crop_bgr, cv2.COLOR_BGR2RGB) for crop in crop_batch]
             kwargs = {"threshold": pose_conf, "include_source_image": False}
             if pose_shape is not None:
@@ -196,7 +218,8 @@ def run_rfdetr_pose_fallback_crop_test(
             raw_predictions = pose_model.predict(crop_rgbs, **kwargs)
             if not isinstance(raw_predictions, list):
                 raw_predictions = [raw_predictions]
-            for crop, raw in zip(crop_batch, raw_predictions, strict=False):
+            for offset, (crop, raw) in enumerate(zip(crop_batch, raw_predictions, strict=False)):
+                crop_index = batch_start + offset
                 crop_poses = _keypoints_to_pose_instances(raw, pose_class_names)
                 crop_poses = _filter_pose_instances(
                     crop_poses,
@@ -206,9 +229,19 @@ def run_rfdetr_pose_fallback_crop_test(
                     keypoint_conf=keypoint_conf,
                 )
                 crop_poses.sort(key=lambda item: item.raw_score if item.raw_score is not None else item.score, reverse=True)
-                for pose in crop_poses[:max_pose_per_crop]:
+                selected = crop_poses[:max_pose_per_crop]
+                if selected:
+                    successful_crop_indices.add(crop_index)
+                    debug_saver.add_crop(
+                        case=FALLBACK_DEBUG_SUCCESS,
+                        video_path=video_path,
+                        frame_index=frame_index,
+                        crop_index=crop_index,
+                        crop=crop,
+                    )
+                for pose in selected:
                     restored.append(offset_pose_from_crop(pose, crop))
-        return restored
+        return restored, successful_crop_indices
 
     def predict_frame(frame_bgr, frame_index: int, timestamp: float, video_path: Path | None) -> list[PoseInstance]:
         frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
@@ -235,11 +268,27 @@ def run_rfdetr_pose_fallback_crop_test(
             max_crops=max_fallback_crops_per_frame,
         )
         stats["fallback_crops"] += len(crops)
-        fallback_poses = pose_predict_crops(crops)
+        fallback_poses, successful_crop_indices = pose_predict_crops(crops, frame_index, video_path)
+        failed_crops = [(idx, crop) for idx, crop in enumerate(crops) if idx not in successful_crop_indices]
         stats["fallback_pose_recovered"] += len(fallback_poses)
+        stats["fallback_pose_success_crops"] += len(successful_crop_indices)
+        stats["fallback_pose_failed_crops"] += len(failed_crops)
         outputs.extend(fallback_poses)
+
+        for crop_index, crop in failed_crops:
+            debug_saver.add_crop(
+                case=FALLBACK_DEBUG_FAILED,
+                video_path=video_path,
+                frame_index=frame_index,
+                crop_index=crop_index,
+                crop=crop,
+            )
+            if draw_detection_only_bbox:
+                outputs.append(detection_to_pose_instance(crop.detection))
+
         return apply_pose_nms(outputs, iou=final_nms_iou)
 
+    dashed_sources = [FALLBACK_SUCCESS_SOURCE] if draw_fallback_success_dashed else []
     result = run_pose_video_inference(
         input_path=input_path,
         out_dir=out_dir,
@@ -263,6 +312,10 @@ def run_rfdetr_pose_fallback_crop_test(
         draw_bbox=draw_bbox,
         draw_skeleton=draw_skeleton,
         draw_keypoints=draw_keypoints,
+        color_by_source=color_by_source,
+        source_color_map=source_color_map,
+        source_label_prefixes=source_label_prefixes,
+        dashed_bbox_sources=dashed_sources,
         codec=codec,
         overwrite=overwrite,
         run_config={
@@ -284,12 +337,23 @@ def run_rfdetr_pose_fallback_crop_test(
             "max_fallback_crops_per_frame": max_fallback_crops_per_frame,
             "max_pose_per_crop": max_pose_per_crop,
             "final_nms_iou": final_nms_iou,
+            "color_by_source": color_by_source,
+            "draw_detection_only_bbox": draw_detection_only_bbox,
+            "draw_fallback_success_dashed": draw_fallback_success_dashed,
+            "save_debug_frames": save_debug_frames,
+            "save_debug_crops": save_debug_crops,
+            "max_debug_items_per_case_per_video": max_debug_items_per_case_per_video,
+            "debug_jpeg_quality": debug_jpeg_quality,
             "detector_load_info": detector_load_info.__dict__,
             "pose_load_info": pose_load_info.__dict__,
         },
+        after_frame=debug_saver.after_frame if debug_saver.enabled else None,
     )
     if result.run_dir:
         path = result.run_dir / "fallback_cases_summary.json"
         path.write_text(json.dumps(dict(stats), ensure_ascii=False, indent=2), encoding="utf-8")
         print(f"[ok] fallback_cases_summary={path}")
+        debug_path = debug_saver.write_summary(result.run_dir)
+        if debug_path:
+            print(f"[ok] fallback_debug_summary={debug_path}")
     return result

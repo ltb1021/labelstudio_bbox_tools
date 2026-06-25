@@ -274,9 +274,14 @@ def run_pose_video_inference(
     draw_bbox: bool = True,
     draw_skeleton: bool = True,
     draw_keypoints: bool = True,
+    color_by_source: bool = False,
+    source_color_map: dict[str, tuple[int, int, int]] | None = None,
+    source_label_prefixes: dict[str, str] | None = None,
+    dashed_bbox_sources: Sequence[str] | None = None,
     codec: str = "mp4v",
     overwrite: bool = False,
     run_config: dict[str, Any] | None = None,
+    after_frame: Callable[..., None] | None = None,
 ) -> PoseInferenceResult:
     if frame_stride < 1:
         raise ValueError("frame_stride must be >= 1")
@@ -330,6 +335,10 @@ def run_pose_video_inference(
             "draw_bbox": draw_bbox,
             "draw_skeleton": draw_skeleton,
             "draw_keypoints": draw_keypoints,
+            "color_by_source": color_by_source,
+            "source_color_map": source_color_map,
+            "source_label_prefixes": source_label_prefixes,
+            "dashed_bbox_sources": list(dashed_bbox_sources or []),
             "codec": codec,
         }
     )
@@ -417,7 +426,23 @@ def run_pose_video_inference(
                         draw_bbox=draw_bbox,
                         draw_skeleton=draw_skeleton,
                         draw_keypoints=draw_keypoints,
+                        color_by_source=color_by_source,
+                        source_color_map=source_color_map,
+                        source_label_prefixes=source_label_prefixes,
+                        dashed_bbox_sources=dashed_bbox_sources,
                     )
+                    if after_frame is not None:
+                        after_frame(
+                            frame_bgr=frame,
+                            drawn_bgr=drawn,
+                            instances=instances,
+                            video_path=video_path,
+                            video_rel_path=rel_path,
+                            output_video_path=out_video,
+                            frame_index=frame_index,
+                            timestamp_seconds=timestamp,
+                            run_dir=run_dir,
+                        )
                     writer.write(drawn)
                     summary.processed_frames += 1
                     summary.instances_written += len(instances)

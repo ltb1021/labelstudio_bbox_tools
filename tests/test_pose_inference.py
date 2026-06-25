@@ -5,7 +5,7 @@ from labelstudio_bbox_tools.pose_inference.draw import draw_pose_instances_on_bg
 from labelstudio_bbox_tools.pose_inference.rfdetr import _filter_pose_instances, _keypoints_to_pose_instances
 from labelstudio_bbox_tools.video_inference.classes import make_class_color_map
 from labelstudio_bbox_tools.video_inference.common import Detection
-from labelstudio_bbox_tools.pose_inference.fallback_crop import make_crop_regions, offset_pose_from_crop, split_pose_detection_cases
+from labelstudio_bbox_tools.pose_inference.fallback_crop import detection_to_pose_instance, make_crop_regions, offset_pose_from_crop, split_pose_detection_cases
 
 
 def test_keypoints_from_xy_conf_uses_coco_names():
@@ -125,3 +125,37 @@ def test_fallback_crop_case_split_and_offset_restore():
     assert restored.xyxy == (90, 30, 110, 70)
     assert restored.keypoints[0].x == 95
     assert restored.keypoints[0].y == 36
+
+
+def test_detection_to_pose_instance_marks_fallback_failed_detection():
+    detection = Detection(xyxy=(10, 20, 50, 90), class_id=3, class_name="worker", score=0.73)
+    instance = detection_to_pose_instance(detection)
+    assert instance.source == "fallback_failed_detection"
+    assert instance.class_name == "worker"
+    assert instance.detection_class_name == "worker"
+    assert instance.detection_xyxy == (10.0, 20.0, 50.0, 90.0)
+    assert instance.keypoints == tuple()
+
+
+def test_draw_pose_instances_supports_source_aware_bbox_only_instance():
+    frame = np.zeros((120, 160, 3), dtype=np.uint8)
+    instance = PoseInstance(
+        xyxy=(20, 20, 110, 90),
+        class_id=0,
+        class_name="worker",
+        score=0.81,
+        keypoints=tuple(),
+        source="fallback_failed_detection",
+    )
+    drawn = draw_pose_instances_on_bgr(
+        frame,
+        [instance],
+        color_map=make_class_color_map(["worker"]),
+        font_size=14,
+        line_width=2,
+        draw_skeleton=True,
+        draw_keypoints=True,
+        color_by_source=True,
+    )
+    assert drawn.shape == frame.shape
+    assert int(drawn.sum()) > 0

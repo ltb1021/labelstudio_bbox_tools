@@ -178,6 +178,23 @@ FINAL_NMS_IOU = 0.50
 - `MAX_POSE_PER_CROP`: crop 하나에서 여러 pose가 나올 때 상위 몇 개를 복원할지 정한다.
 - `fallback_cases_summary.json`: 처리 frame 수, pose-only 수, detection-only 수, fallback crop 수, fallback pose 회복 수를 기록한다.
 
+b 케이스를 눈으로 확인하기 쉽게 fallback source별 시각화 옵션도 제공한다.
+
+```python
+COLOR_BY_SOURCE = True
+DRAW_DETECTION_ONLY_BBOX = True
+DRAW_FALLBACK_SUCCESS_DASHED = True
+SAVE_DEBUG_FRAMES = False
+SAVE_DEBUG_CROPS = False
+MAX_DEBUG_ITEMS_PER_CASE_PER_VIDEO = 200
+```
+
+- `fallback_crop_pose`: custom detector만 잡은 b 케이스를 crop pose로 다시 추론해서 성공한 결과다. 기본 label prefix는 `fallback_pose`이고, bbox는 점선으로 표시할 수 있다.
+- `fallback_failed_detection`: b 케이스 crop pose도 실패한 결과다. 기본 label prefix는 `custom_detect`이고, keypoint 없이 custom detector bbox만 표시한다.
+- `SAVE_DEBUG_FRAMES=True`: `debug_frames/fallback_success/`, `debug_frames/fallback_failed/`에 frame jpg를 저장한다.
+- `SAVE_DEBUG_CROPS=True`: `debug_crops/fallback_success/`, `debug_crops/fallback_failed/`에 crop jpg를 저장한다.
+- debug jpg는 빠르게 많아질 수 있으므로 기본값은 저장하지 않는 쪽이다. 필요하면 `MAX_DEBUG_ITEMS_PER_CASE_PER_VIDEO`로 영상 1개, case 1종류당 저장 개수를 제한한다.
+
 실시간 운영에서는 모든 b 케이스를 항상 fallback하지 말고, 위험 class, 작은 bbox, 최근 tracking miss 객체처럼 우선순위를 둬야 한다. 현재 notebook은 recall gain을 먼저 확인하기 위한 실험용이다.
 
 ## RF-DETR Keypoint score와 NMS
