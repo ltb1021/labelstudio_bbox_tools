@@ -43,6 +43,22 @@ examples/notebooks/video_inference/
 
 이 notebook들은 Label Studio API를 호출하지 않는다. YOLO11과 RF-DETR weight를 같은 영상에 적용한 뒤 bbox/label overlay 영상을 만들고, 필요하면 두 결과를 좌우로 합쳐 비교한다.
 
+사람 pose inference 비교 notebook은 아래 폴더에 둔다.
+
+```text
+examples/notebooks/pose_inference/
+```
+
+현재 pose inference notebook은 다음과 같다.
+
+```text
+01_yolo11_pose_video_visualize.ipynb
+02_rfdetr_pose_video_visualize.ipynb
+03_compare_pose_videos.ipynb
+```
+
+이 notebook들은 official pretrained pose/keypoint weight로 사람 skeleton을 영상에 그린다. Label Studio API를 호출하지 않는다.
+
 ## 권장 실행 순서
 
 1. `00_ls_check_environment.ipynb`
@@ -66,6 +82,7 @@ examples/notebooks/video_inference/
 - export notebook: `RUN_EXPORT=False`
 - video/pseudo/merge/import/delete notebook: `DRY_RUN=True` 또는 별도 실행 flag가 꺼진 상태
 - video inference notebook: `RUN_PREVIEW=False`, `RUN_INFERENCE=False`, `RUN_COMPARE=False`, `DRY_RUN=True`
+- pose inference notebook: `RUN_PREVIEW=False`, `RUN_INFERENCE=False`, `RUN_COMPARE=False`, `DRY_RUN=True`
 
 이 값을 바꾸기 전에는 출력 메시지를 보고 경로, project id, class 목록이 맞는지 확인한다.
 

@@ -19,6 +19,7 @@ dependencies = [
 dev = ["pytest>=7"]
 pseudo = ["ultralytics>=8", "PyYAML>=6"]
 video = ["opencv-python>=4", "PyYAML>=6"]
+pose = ["opencv-python>=4", "PyYAML>=6"]
 
 [project.scripts]
 lsbbox-import-images = "labelstudio_bbox_tools.importers.image_import:main"
@@ -33,6 +34,8 @@ lsbbox-extract-video-frames = "labelstudio_bbox_tools.video.frame_extract:main"
 lsbbox-video-infer-yolo11 = "labelstudio_bbox_tools.video_inference.yolo11:main"
 lsbbox-video-infer-rfdetr = "labelstudio_bbox_tools.video_inference.rfdetr:main"
 lsbbox-video-compare = "labelstudio_bbox_tools.video_inference.compare:main"
+lsbbox-pose-infer-yolo11 = "labelstudio_bbox_tools.pose_inference.yolo11:main"
+lsbbox-pose-infer-rfdetr = "labelstudio_bbox_tools.pose_inference.rfdetr:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
