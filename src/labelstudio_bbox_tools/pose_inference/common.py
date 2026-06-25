@@ -70,6 +70,12 @@ class PoseInstance:
     class_name: str
     score: float
     keypoints: tuple[PoseKeypoint, ...]
+    raw_score: float | None = None
+    source: str | None = None
+    detection_class_name: str | None = None
+    detection_score: float | None = None
+    detection_xyxy: tuple[float, float, float, float] | None = None
+    crop_xyxy: tuple[float, float, float, float] | None = None
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -77,6 +83,12 @@ class PoseInstance:
             "class_id": int(self.class_id),
             "class_name": self.class_name,
             "score": float(self.score),
+            "raw_score": None if self.raw_score is None else float(self.raw_score),
+            "source": self.source,
+            "detection_class_name": self.detection_class_name,
+            "detection_score": None if self.detection_score is None else float(self.detection_score),
+            "detection_xyxy": None if self.detection_xyxy is None else [float(value) for value in self.detection_xyxy],
+            "crop_xyxy": None if self.crop_xyxy is None else [float(value) for value in self.crop_xyxy],
             "keypoints": [keypoint.as_dict() for keypoint in self.keypoints],
         }
 

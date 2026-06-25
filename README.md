@@ -114,6 +114,8 @@ examples/notebooks/pose_inference/
 1. `01_yolo11_pose_video_visualize.ipynb`: `ltb_ultra` env에서 YOLO11 official pose pretrained 영상 시각화
 2. `02_rfdetr_pose_video_visualize.ipynb`: `ltb_rfdetr` env에서 RF-DETR Keypoint Preview official pretrained 영상 시각화
 3. `03_compare_pose_videos.ipynb`: 이미 생성된 두 pose 시각화 영상을 좌우로 합쳐 비교
+4. `04_yolo11_pose_fallback_crop_test.ipynb`: custom YOLO11 detector가 잡고 YOLO11 pose가 놓친 b 케이스를 crop batch로 재추론
+5. `05_rfdetr_pose_fallback_crop_test.ipynb`: custom RF-DETR detector가 잡고 RF-DETR Keypoint가 놓친 b 케이스를 crop batch로 재추론
 
 pose inference notebook도 기본값은 `RUN_PREVIEW=False`, `RUN_INFERENCE=False`, `RUN_COMPARE=False`, `DRY_RUN=True`로 시작한다.
 

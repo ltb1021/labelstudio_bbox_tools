@@ -41,6 +41,8 @@ examples/notebooks/pose_inference/
 1. `01_yolo11_pose_video_visualize.ipynb`
 2. `02_rfdetr_pose_video_visualize.ipynb`
 3. `03_compare_pose_videos.ipynb`
+4. `04_yolo11_pose_fallback_crop_test.ipynb`
+5. `05_rfdetr_pose_fallback_crop_test.ipynb`
 
 ## Conda Env
 
@@ -128,6 +130,74 @@ OUT_DIR/
 - skeleton line은 연결된 두 keypoint가 모두 `KEYPOINT_CONF` 이상일 때만 그린다.
 - label은 bbox 좌상단 근처에 두되, 화면 밖으로 나가지 않게 clamp하고 겹침 후보 위치를 순서대로 시도한다.
 - 한글 title/label이 필요한 경우 Nanum/Noto CJK font를 자동 탐색한다.
+
+
+## b 케이스 fallback crop pose 테스트
+
+운영 후보 구조는 full-frame pose와 custom detector를 같은 frame에 적용한 뒤 case를 나누는 방식이다.
+
+```text
+a: full-frame pose만 detect
+b: custom detector만 detect
+c: 둘 다 detect
+d: 둘 다 miss
+```
+
+이 workflow에서 핵심은 `b` 케이스다. custom detector가 사람/작업자 후보를 찾았지만 full-frame pose model이 해당 instance를 놓친 경우, 그 bbox를 crop/padding한 뒤 pose model에 다시 넣는다.
+
+```text
+full-frame pose + custom detection
+ -> bbox IoU matching
+ -> b 케이스 detection bbox만 crop
+ -> crop들을 한 canvas로 붙이지 않고 list batch로 pose model에 입력
+ -> crop 좌표계 pose를 원본 frame 좌표계로 복원
+ -> full-frame pose 결과와 fallback crop pose 결과를 NMS로 merge
+```
+
+새 notebook:
+
+```text
+04_yolo11_pose_fallback_crop_test.ipynb
+05_rfdetr_pose_fallback_crop_test.ipynb
+```
+
+주요 옵션:
+
+```python
+MATCH_IOU = 0.30
+CROP_PADDING_RATIO = 0.15
+FALLBACK_BATCH_SIZE = 8
+MAX_FALLBACK_CROPS_PER_FRAME = 4
+MAX_POSE_PER_CROP = 1
+FINAL_NMS_IOU = 0.50
+```
+
+- `MATCH_IOU`: full-frame pose bbox와 custom detector bbox가 같은 객체인지 판단하는 기준이다.
+- `MAX_FALLBACK_CROPS_PER_FRAME`: 실시간성을 위해 b 케이스 crop 수를 제한한다.
+- `FALLBACK_BATCH_SIZE`: crop들을 list batch로 pose model에 넣는 크기다.
+- `MAX_POSE_PER_CROP`: crop 하나에서 여러 pose가 나올 때 상위 몇 개를 복원할지 정한다.
+- `fallback_cases_summary.json`: 처리 frame 수, pose-only 수, detection-only 수, fallback crop 수, fallback pose 회복 수를 기록한다.
+
+실시간 운영에서는 모든 b 케이스를 항상 fallback하지 말고, 위험 class, 작은 bbox, 최근 tracking miss 객체처럼 우선순위를 둬야 한다. 현재 notebook은 recall gain을 먼저 확인하기 위한 실험용이다.
+
+## RF-DETR Keypoint score와 NMS
+
+RF-DETR Keypoint Preview의 `detection_confidence`는 keypoint localization uncertainty fusion이 들어간 ranking score일 수 있다. 이 값은 일반적인 0~1 확률처럼 해석하기 어렵고, 일부 결과에서는 1.0을 넘을 수 있다.
+
+이 workflow에서는 영상 label에 표시하는 `score`는 0~1 범위로 clamp하고, 분석용 `predictions.jsonl`에는 `raw_score`를 별도로 남긴다.
+
+RF-DETR keypoint 결과는 같은 사람에 대해 비슷한 bbox 후보가 여러 개 남을 수 있으므로 runner에서 classwise NMS를 한 번 더 적용한다.
+
+```python
+ENABLE_NMS = True
+IOU = 0.50
+MAX_INSTANCES_PER_FRAME = None
+MIN_VISIBLE_KEYPOINTS = None
+```
+
+- `IOU`를 낮추면 중복 bbox를 더 강하게 제거한다.
+- 사람이 가까이 붙어 있거나 겹쳐 있으면 `IOU=0.6~0.7`처럼 높이는 편이 안전할 수 있다.
+- `MIN_VISIBLE_KEYPOINTS`는 가림/엎어짐 케이스를 놓칠 수 있어 기본값은 `None`으로 둔다.
 
 ## CLI 예시
 

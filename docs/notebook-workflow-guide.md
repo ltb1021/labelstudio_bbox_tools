@@ -55,9 +55,11 @@ examples/notebooks/pose_inference/
 01_yolo11_pose_video_visualize.ipynb
 02_rfdetr_pose_video_visualize.ipynb
 03_compare_pose_videos.ipynb
+04_yolo11_pose_fallback_crop_test.ipynb
+05_rfdetr_pose_fallback_crop_test.ipynb
 ```
 
-이 notebook들은 official pretrained pose/keypoint weight로 사람 skeleton을 영상에 그린다. Label Studio API를 호출하지 않는다.
+이 notebook들은 official pretrained pose/keypoint weight로 사람 skeleton을 영상에 그린다. `04`/`05`는 custom detector가 찾았지만 full-frame pose가 놓친 b 케이스를 crop batch로 재추론한다. Label Studio API를 호출하지 않는다.
 
 ## 권장 실행 순서
 

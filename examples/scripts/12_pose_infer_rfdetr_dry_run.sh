@@ -10,6 +10,7 @@ lsbbox-pose-infer-rfdetr \
   --out-dir "/path/to/pose_inference_outputs" \
   --device "cuda" \
   --conf 0.25 \
+  --iou 0.50 \
   --keypoint-conf 0.20 \
   --max-videos 1 \
   --max-frames 300
