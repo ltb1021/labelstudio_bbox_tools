@@ -113,7 +113,10 @@ def _keypoints_to_pose_instances(
         else:
             class_name = class_names[0] if class_names else "person"
         if class_name == "__background__":
-            continue
+            if len(class_names) == 1 and class_names[0] == "person":
+                class_name = "person"
+            else:
+                continue
         class_id = class_names.index(class_name) if class_name in class_names else raw_class_id
         raw_score = float(det_scores[idx]) if idx < len(det_scores) and det_scores[idx] is not None else 1.0
         conf = conf_all[idx] if idx < len(conf_all) else None
@@ -360,4 +363,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
