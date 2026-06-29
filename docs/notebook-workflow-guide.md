@@ -61,6 +61,20 @@ examples/notebooks/pose_inference/
 
 이 notebook들은 official pretrained pose/keypoint weight로 사람 skeleton을 영상에 그린다. `04`/`05`는 custom detector가 찾았지만 full-frame pose가 놓친 b 케이스를 crop batch로 재추론한다. Label Studio API를 호출하지 않는다.
 
+Label Studio와 직접 관련 없는 dataset packaging notebook은 아래 폴더에 둔다.
+
+```text
+examples/notebooks/dataset_tools/
+```
+
+현재 dataset tools notebook은 다음과 같다.
+
+```text
+01_coco_pack_images_labels.ipynb
+```
+
+이 notebook은 COCO bbox JSON에 들어 있는 이미지 경로와 annotation을 이용해 전달용 images/labels/annotations 폴더를 만든다. Label Studio API를 호출하지 않는다.
+
 ## 권장 실행 순서
 
 1. `00_ls_check_environment.ipynb`
@@ -85,6 +99,7 @@ examples/notebooks/pose_inference/
 - video/pseudo/merge/import/delete notebook: `DRY_RUN=True` 또는 별도 실행 flag가 꺼진 상태
 - video inference notebook: `RUN_PREVIEW=False`, `RUN_INFERENCE=False`, `RUN_COMPARE=False`, `DRY_RUN=True`
 - pose inference notebook: `RUN_PREVIEW=False`, `RUN_INFERENCE=False`, `RUN_COMPARE=False`, `DRY_RUN=True`
+- dataset tools notebook: `RUN_PACK=False`, `DRY_RUN=True`
 
 이 값을 바꾸기 전에는 출력 메시지를 보고 경로, project id, class 목록이 맞는지 확인한다.
 

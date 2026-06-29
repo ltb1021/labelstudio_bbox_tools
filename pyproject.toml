@@ -36,6 +36,7 @@ lsbbox-video-infer-rfdetr = "labelstudio_bbox_tools.video_inference.rfdetr:main"
 lsbbox-video-compare = "labelstudio_bbox_tools.video_inference.compare:main"
 lsbbox-pose-infer-yolo11 = "labelstudio_bbox_tools.pose_inference.yolo11:main"
 lsbbox-pose-infer-rfdetr = "labelstudio_bbox_tools.pose_inference.rfdetr:main"
+lsbbox-pack-coco-dataset = "labelstudio_bbox_tools.dataset_pack.coco_pack:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
